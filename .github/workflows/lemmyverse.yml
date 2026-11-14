@@ -1,0 +1,48 @@
+name: Synchroniser le miroir Lemmyverse
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  construire:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v6
+      - name: Préparer GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v5
+      - name: Installer Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Télécharger, valider et préparer les deux snapshots
+        run: python scripts/miroirLemmyverse.py --pages-base "${{ steps.pages.outputs.base_url }}" --output _site
+      - name: Envoyer l’artefact GitHub Pages
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  publier:
+    needs: construire
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publier le miroir
+        id: deployment
+        uses: actions/deploy-pages@v4
